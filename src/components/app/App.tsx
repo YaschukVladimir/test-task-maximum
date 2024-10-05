@@ -1,14 +1,80 @@
 import { Select, Table, Pagination } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { CarStockItem } from '../../types/types';
-import { useState } from 'react';
-import { carStock } from '../../mock-data/mock';
+import { useEffect, useState } from 'react';
 import { Option } from 'antd/es/mentions';
+import { Tabs } from "antd";
+import type { TabsProps } from 'antd';
+import axios from 'axios';
+import type { SelectProps } from 'antd';
+
+type Mark = {
+  _id: string;
+  count: number;
+}
+
+type Model = {
+  _id: string;
+}
+
+const { TabPane } = Tabs;
 
 
 function App() {
+  const [marks, setMarks] = useState<Mark[]>([]);
+  const [stock, setStock] = useState([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [cars, setCars] = useState<CarStockItem[]>([]);
+  const [selectedMark, setSelectedMark] = useState<string>();
+  const [models, setModels] = useState<Model[]>([]);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [options, setOptions] = useState<SelectProps['options']>([]);
 
-  const [marks, setMarks] = useState([])
+  const handleSetModels = (value: string[]) => {
+    setSelectedModels(value);
+  };
+
+  useEffect(() => {
+    fetch('http://localhost:3000/api/marks')
+      .then((resp) => resp.json())
+      .then((res) => {
+        setMarks(res);
+        setSelectedMark(res[0]._id);
+      });
+  }, []);
+
+  useEffect(() => {
+    if(selectedMark) {
+      fetch(`http://localhost:3000/api/models/${selectedMark}`)
+      .then((resp) => resp.json())
+      .then((res) => setModels(res));
+    }
+    
+  }, [selectedMark]);
+
+  const fetchCars = async (page = 1) => {
+    setLoading(true);
+    const res = await axios.get('http://localhost:3000/api/stock', {
+      params: {
+        mark: selectedMark || '',
+        models: selectedModels.join(','),
+        page,
+      },
+    });
+    setCars(res.data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (selectedMark) {
+      fetchCars();
+    }
+  }, [selectedMark, selectedModels]);
+
+  console.log(marks, 'marks');
+  console.log(stock, 'stock');
+  console.log(models, 'models');
+
 
   const columns: ColumnsType<CarStockItem> = [
     { title: 'ID', dataIndex: '_id', key: '_id' },
@@ -17,59 +83,34 @@ function App() {
     { title: 'Комплектация', dataIndex: 'equipmentName', key: 'equipmentName' },
     { title: 'Стоимость', dataIndex: 'price', key: 'price', render: (price: number) => `${price.toLocaleString()} руб.` },
     { title: 'Дата создания', dataIndex: 'createdAt', key: 'createdAt', render: (date: Date) => new Date(date).toLocaleDateString() },
-];
+  ];
 
   return (
     <div>
-            <Select placeholder="Выберите марку" style={{ width: 200 }}>
-                {carStock.map(car => <Option key={car._id} value={car.model}>{car.model} </Option>)}
-            </Select>
+      {marks.length && <Tabs activeKey={marks[0]._id} onChange={(value) => setSelectedMark(value)}>
+        {marks?.map((mark) => <TabPane key={mark._id} tab={`${mark._id} ${mark.count}`}></TabPane>)}
+      </Tabs>}
+      <Select placeholder="Выберите модель" style={{ width: 200 }} mode='multiple' onChange={(value) => handleSetModels(value)}>
+        {models?.map(model => <Option key={model._id} value={model._id}>{model._id} </Option>)}
+      </Select>
 
-            {/* <Select
-                mode="multiple"
-                placeholder="Выберите модели"
-                onChange={value => setSelectedModels(value)}
-                style={{ width: 200, marginLeft: 10 }}
-            >
-                {models.map(model => <Option key={model._id} value={model._id}>{model._id}</Option>)}
-            </Select> */}
+      <Table
+        columns={columns}
+        dataSource={cars}
+        rowKey="_id"
+        pagination={false}
+        // loading={loading}
+        style={{ marginTop: 20 }}
+      />
 
-            <Table
-                columns={columns}
-                dataSource={carStock}
-                rowKey="_id"
-                pagination={false}
-                // loading={loading}
-                style={{ marginTop: 20 }}
-            />
-
-            <Pagination
-                current={1}
-                pageSize={20}
-                total={10}
-                // onChange={page => setPage(page)}
-                style={{ marginTop: 20 }}
-            />
-        </div>
-    // <>
-    //   <div>hello world</div>
-    //   <div className="heading">
-    //     <ul className="heading__list">
-    //       <li className="heading__item">
-    //         <div className="headin__item-carname">Audi</div>
-    //         <div className="heading__item-carqty">1</div>
-    //       </li>
-    //       <li className="heading__item">
-    //         <div className="headin__item-carname">Audi</div>
-    //         <div className="heading__item-carqty">1</div>
-    //       </li>
-    //       <li className="heading__item">
-    //         <div className="headin__item-carname">Audi</div>
-    //         <div className="heading__item-carqty">1</div>
-    //       </li>
-    //     </ul>
-    //   </div>
-    // </>
+      <Pagination
+        current={1}
+        pageSize={20}
+        total={10}
+        // onChange={page => setPage(page)}
+        style={{ marginTop: 20 }}
+      />
+    </div>
   )
 }
 
