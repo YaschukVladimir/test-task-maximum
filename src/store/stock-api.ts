@@ -11,7 +11,8 @@ type QueryParams = {
 
 export const stockApi = createApi({
     reducerPath: 'stockApi',
-    baseQuery: fetchBaseQuery({baseUrl: 'http://localhost:3000/api/'}),
+    // baseQuery: fetchBaseQuery({baseUrl: 'http://localhost:3000/api/'}),
+    baseQuery: fetchBaseQuery({baseUrl: 'https://test-task-maximum-back.vercel.app/api/'}),
     endpoints: (build) => {
         return {
             getCars: build.query<CarStockItem[], QueryParams>({
